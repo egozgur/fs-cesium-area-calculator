@@ -3,7 +3,11 @@
     <div class="button-group">
             <app-button (newAreaEvent)="setArea($event)" title="Calculate Area"></app-button>
             <app-button (newAreaEvent)="setArea($event)" title="Clear Area"></app-button>
-            <p class="p-calculate-field">Calculated Area: {{area}}</p>
+            <p class="p-calculate-field" [class.error-message]="isError">
+                <span *ngIf="!isError && area">Calculated Area: {{area}}</span>
+                <span *ngIf="isError">{{area}}</span>
+                <span *ngIf="!area && !isError"></span> <!-- Cleared state -->
+            </p>
     </div>
     <!-- Container for the Cesium map -->
     <div class="map">
