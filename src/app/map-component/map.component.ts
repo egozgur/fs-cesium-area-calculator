@@ -11,35 +11,34 @@ import {CesiumService} from "../cesium-service/cesium.service";
     styleUrl: "./map.component.css"
 })
 export class MapComponent implements OnInit {
-    // Input property for storing the calculated area
-    private viewer!: Viewer;
-    private topLeft: Cartesian3 | undefined;
-    private bottomRight: Cartesian3 | undefined;
-    private cesiumService: CesiumService;
+    private viewer!: Viewer; // The Cesium Viewer instance. Definite assignment in ngOnInit.
+    private isFirstPointClicked = false; // Flag to track whether the next click is for the first or second point of the rectangle.
+    private cesiumService: CesiumService; // Service for Cesium map interactions.
 
-    // @ts-ignore
     constructor(private el: ElementRef, private cesiumService: CesiumService) {
-        this.cesiumService = cesiumService; // Initialize the CesiumService instance
+        this.cesiumService = cesiumService; // Initialize the CesiumService instance.
     }
 
-    // Initializes the Cesium viewer and runs setupClickEvent function.
+    // Angular lifecycle hook that is called after data-bound properties of a directive are initialized.
     ngOnInit(): void {
-        this.initCesium();
+        this.initCesium(); // Initialize the Cesium viewer and related event handlers.
     }
 
+    // Initializes the Cesium Viewer instance and sets up interaction handlers.
     public initCesium(): void {
-        this.viewer = new Viewer(this.el.nativeElement, {
-            timeline: false,
-            fullscreenButton: false,
-            animation: false,
+        this.viewer = new Viewer(this.el.nativeElement, { // Creates the Cesium Viewer attached to the component's host element.
+            timeline: false, // Disables the timeline widget.
+            fullscreenButton: false, // Disables the fullscreen button.
+            animation: false, // Disables the animation widget.
         });
-        this.setupClickEvent(); // Set up click event after viewer initialization
+        this.setupClickEvent(); // Sets up the handler for map click events.
     }
 
-    // Sets up the click event to capture user-defined rectangle.
+    // Configures the screen space event handler for left clicks on the map
+    // to capture coordinates for defining a rectangle.
     setupClickEvent(): void {
-        this.viewer.screenSpaceEventHandler.setInputAction((clickEvent: any) => {
-            const clickedPosition = clickEvent.position;
+        this.viewer.screenSpaceEventHandler.setInputAction((clickEvent: any) => { // clickEvent is of type ScreenSpaceEventHandler.PositionedEvent
+            const clickedPosition = clickEvent.position; // The 2D screen position of the click.
 
             if (clickedPosition) {
                 const cartesian = this.viewer.scene.camera.pickEllipsoid(
@@ -48,18 +47,17 @@ export class MapComponent implements OnInit {
                 );
 
                 if (cartesian) {
-                    if (!this.topLeft) {
-                        this.topLeft = cartesian;
-                    } else if (!this.bottomRight) {
-                        this.bottomRight = cartesian;
-                        // Call function to create rectangle using CesiumService
-                        this.cesiumService.createRectangle(this.viewer, this.topLeft, this.bottomRight);
-                        //for avoiding errors when clearArea function calls, reset corner points
-                        this.bottomRight = undefined
-                        this.topLeft = undefined
+                    if (!this.isFirstPointClicked) {
+                        // This is the first click, set the first corner of the rectangle.
+                        this.cesiumService.setFirstPoint(cartesian);
+                        this.isFirstPointClicked = true;
+                    } else {
+                        // This is the second click, set the second corner and create the rectangle.
+                        this.cesiumService.setSecondPointAndCreateRectangle(cartesian, this.viewer);
+                        this.isFirstPointClicked = false; // Reset flag for the next rectangle drawing operation.
                     }
                 } else {
-                    console.warn("Unable to obtain world coordinates.");
+                    console.warn("Unable to obtain world coordinates from click.");
                 }
             }
         }, ScreenSpaceEventType.LEFT_CLICK);
